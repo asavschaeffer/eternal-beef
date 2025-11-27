@@ -15,13 +15,14 @@ body, html {
   font-family: var(--font-main);
   background-color: var(--bg-color);
   color: var(--text-color);
-  overflow: hidden; /* Prevent scroll on main map page */
+  /* overflow: hidden; Removed to allow scrolling on content pages */
 }
 
 #app {
   position: relative;
   height: 100vh;
   width: 100vw;
+  overflow: hidden; /* Keep map page fixed */
 }
 
 #map {
