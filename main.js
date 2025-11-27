@@ -54,10 +54,12 @@ function getIcon(type) {
 // Helper: Create Popup Content (Display)
 function createPopupContent(pin) {
     const typeLabel = PIN_TYPES[pin.type]?.label || 'Skate Spot';
+    const title = pin.title || typeLabel;
+
     const div = document.createElement('div');
     div.className = 'pin-popup';
     div.innerHTML = `
-        <h3>${typeLabel}</h3>
+        <h3>${title}</h3>
         <p>${pin.description || ''}</p>
         <button class="delete-btn" data-id="${pin.id}">Delete Pin</button>
     `;
@@ -87,6 +89,7 @@ function createFormContent(onSubmit) {
             <label><input type="radio" name="type" value="park"> 🔵 Park</label>
             <label><input type="radio" name="type" value="street"> 🔴 Street</label>
         </div>
+        <input type="text" class="title-input" placeholder="Title (e.g. 'Hubba Hideout')" />
         <input type="text" class="desc-input" placeholder="Description (e.g. 'Ledges are waxed')" />
         <div class="actions">
             <button class="save-btn">Save</button>
@@ -96,16 +99,36 @@ function createFormContent(onSubmit) {
 
     const saveBtn = div.querySelector('.save-btn');
     const cancelBtn = div.querySelector('.cancel-btn');
+    const titleInput = div.querySelector('.title-input');
     const descInput = div.querySelector('.desc-input');
+    const radios = div.querySelectorAll('input[name="type"]');
+
+    // Auto-fill title based on type (if empty or matches previous type label)
+    let lastAutoTitle = PIN_TYPES['skate_rn'].label;
+    titleInput.value = lastAutoTitle;
+
+    radios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            const newType = e.target.value;
+            const newLabel = PIN_TYPES[newType].label;
+
+            // Only update if user hasn't typed a custom title (or if it matches the old auto-title)
+            if (titleInput.value === lastAutoTitle || titleInput.value === '') {
+                titleInput.value = newLabel;
+                lastAutoTitle = newLabel;
+            }
+        });
+    });
 
     saveBtn.addEventListener('click', () => {
         const type = div.querySelector('input[name="type"]:checked').value;
+        const title = titleInput.value;
         const desc = descInput.value;
-        onSubmit(type, desc);
+        onSubmit(type, title, desc);
     });
 
     cancelBtn.addEventListener('click', () => {
-        onSubmit(null, null); // Signal cancel
+        onSubmit(null, null, null); // Signal cancel
     });
 
     return div;
@@ -138,7 +161,7 @@ map.on('click', (e) => {
     // Create temp marker
     const tempMarker = L.marker([lat, lng], { icon: getIcon('street') }).addTo(map);
 
-    const form = createFormContent(async (type, desc) => {
+    const form = createFormContent(async (type, title, desc) => {
         if (!type) {
             // Cancelled
             map.removeLayer(tempMarker);
@@ -146,7 +169,7 @@ map.on('click', (e) => {
         }
 
         // Save
-        let savedPin = { lat, lng, type, description: desc };
+        let savedPin = { lat, lng, type, title, description: desc };
 
         if (supabase) {
             const { data, error } = await supabase
@@ -157,7 +180,7 @@ map.on('click', (e) => {
 
             if (error) {
                 console.error('Error saving pin:', error);
-                alert('Failed to save pin.');
+                alert('Failed to save pin. Did you run the migration to add the "title" column?');
                 map.removeLayer(tempMarker);
                 return;
             }

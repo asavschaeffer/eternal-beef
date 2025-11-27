@@ -5,6 +5,7 @@ create table public.pins (
   lat double precision not null,
   lng double precision not null,
   type text not null, -- 'skate', 'chill', 'event'
+  title text,
   description text
 );
 
