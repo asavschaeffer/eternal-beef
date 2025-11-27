@@ -30,41 +30,6 @@ L.control.zoom({
     position: 'bottomright'
 }).addTo(map);
 
-// State
-let isDroppingPin = false;
-let tempMarker = null;
-let tempLatLng = null;
-
-// DOM Elements
-const addPinBtn = document.getElementById('add-pin-btn');
-const modalContainer = document.getElementById('modal-container');
-const addPinModal = document.getElementById('add-pin-modal');
-const authModal = document.getElementById('auth-modal');
-const pinForm = document.getElementById('pin-form');
-const authBtn = document.getElementById('auth-btn');
-const cancelBtns = document.querySelectorAll('.cancel-btn');
-
-// Helper Functions
-function openModal(modal) {
-    modalContainer.classList.remove('hidden');
-    modal.classList.remove('hidden');
-}
-
-function closeModal() {
-    modalContainer.classList.add('hidden');
-    addPinModal.classList.add('hidden');
-    authModal.classList.add('hidden');
-    // Clean up temp marker if cancelled
-    if (tempMarker) {
-        map.removeLayer(tempMarker);
-        tempMarker = null;
-    }
-    isDroppingPin = false;
-    map.getContainer().style.cursor = '';
-    addPinBtn.textContent = 'Drop a Pin';
-    addPinBtn.classList.remove('active');
-}
-
 async function loadPins() {
     if (!supabase) return;
 
@@ -84,69 +49,30 @@ async function loadPins() {
     });
 }
 
-// Event Listeners
-addPinBtn.addEventListener('click', () => {
-    isDroppingPin = !isDroppingPin;
-    if (isDroppingPin) {
-        addPinBtn.textContent = 'Click on Map to Pin';
-        map.getContainer().style.cursor = 'crosshair';
-    } else {
-        addPinBtn.textContent = 'Drop a Pin';
-        map.getContainer().style.cursor = '';
-    }
-});
+// Map Click Handler - Direct Drop
+map.on('click', async (e) => {
+    const lat = e.latlng.lat;
+    const lng = e.latlng.lng;
 
-authBtn.addEventListener('click', () => {
-    openModal(authModal);
-});
-
-cancelBtns.forEach(btn => {
-    btn.addEventListener('click', closeModal);
-});
-
-// Map Click Handler
-map.on('click', (e) => {
-    if (!isDroppingPin) return;
-
-    tempLatLng = e.latlng;
-
-    // Add a temporary marker
-    tempMarker = L.marker(tempLatLng).addTo(map);
-
-    // Open Modal
-    openModal(addPinModal);
-});
-
-// Form Submit Handler
-pinForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const type = document.getElementById('pin-type').value;
-    const desc = document.getElementById('pin-desc').value;
+    // Add marker immediately
+    const marker = L.marker([lat, lng]).addTo(map);
+    marker.bindPopup("<b>SKATE SPOT</b><br>New spot dropped!").openPopup();
 
     if (supabase) {
         const { error } = await supabase
             .from('pins')
             .insert([
-                { lat: tempLatLng.lat, lng: tempLatLng.lng, type: type, description: desc }
+                { lat: lat, lng: lng, type: 'skate', description: 'Skate Spot' }
             ]);
 
         if (error) {
             console.error('Error saving pin:', error);
-            alert('Failed to save pin. Check console for details.');
-            return;
+            // Optionally remove marker if save fails
+            // map.removeLayer(marker);
         }
     } else {
-        console.log('Mock Save:', { lat: tempLatLng.lat, lng: tempLatLng.lng, type, desc });
+        console.log('Mock Save:', { lat, lng });
     }
-
-    // Keep the marker
-    if (tempMarker) {
-        tempMarker.bindPopup(`<b>${type.toUpperCase()}</b><br>${desc}`).openPopup();
-        tempMarker = null;
-    }
-
-    closeModal();
 });
 
 // Initial Load

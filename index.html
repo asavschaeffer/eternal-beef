@@ -13,62 +13,19 @@
       <div id="map"></div>
       
       <div id="overlay">
-        <header>
+        <header class="main-header">
           <h1>Eternal Beef</h1>
-          <nav>
-            <button id="auth-btn">Sign In</button>
-          </nav>
+          <p class="tagline">
+            <a href="./pages/mission.html">healthy, creative, and supportive communities through skateboarding, cycling, and arts education</a>
+          </p>
         </header>
 
-        <main id="intro-content">
-          <p class="mission-statement">
-            The Eternal Beef Community Collective is dedicated to fostering healthy, creative, and supportive communities through skateboarding, cycling, arts education, and mutual aid.
-          </p>
-          <p class="vision-statement">
-            We envision a Bay Area where every young person—regardless of financial background—has access to <a href="./pages/skate-lessons.html">Skateboarding Instruction</a>, <a href="./pages/bike-program.html">Bike Programs</a>, <a href="./pages/skate-houses.html">Safe Communal Spaces</a>, <a href="./pages/community-services.html">Community Services</a>, and <a href="./pages/yamo-interviews.html">Creative Expression</a>.
-          </p>
-        </main>
-
         <footer>
-          <button id="add-pin-btn" class="primary-btn">Drop a Pin</button>
           <div class="mailing-list">
             <input type="email" placeholder="Join our mailing list" />
             <button>Subscribe</button>
           </div>
         </footer>
-      </div>
-
-      <!-- Modals -->
-      <div id="modal-container" class="hidden">
-        <div id="add-pin-modal" class="modal hidden">
-          <h2>Drop a Pin</h2>
-          <form id="pin-form">
-            <div class="form-group">
-              <label for="pin-type">Type</label>
-              <select id="pin-type">
-                <option value="skate">Skate Session</option>
-                <option value="chill">Chill / Hangout</option>
-                <option value="event">Event</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="pin-desc">Description</label>
-              <textarea id="pin-desc" placeholder="What's happening? (e.g. 'Skating at 3pm')"></textarea>
-            </div>
-            <div class="modal-actions">
-              <button type="button" class="cancel-btn">Cancel</button>
-              <button type="submit" class="primary-btn">Post Pin</button>
-            </div>
-          </form>
-        </div>
-
-        <div id="auth-modal" class="modal hidden">
-          <h2>Sign In</h2>
-          <p>Sign in to manage your pins and join the community.</p>
-          <button id="github-login" class="auth-btn">Sign in with GitHub</button>
-          <button id="google-login" class="auth-btn">Sign in with Google</button>
-          <button class="cancel-btn" style="margin-top: 1rem;">Cancel</button>
-        </div>
       </div>
     </div>
     <script type="module" src="/main.js"></script>
