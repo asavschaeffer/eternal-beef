@@ -83,39 +83,37 @@ function createFormContent(onSubmit) {
     const div = document.createElement('div');
     div.className = 'pin-form-popup';
     div.innerHTML = `
-        <h3>New Spot</h3>
+        <input type="text" class="title-input" placeholder="Title (e.g. 'Hubba Hideout')" />
         <div class="form-group">
             <label><input type="radio" name="type" value="skate_rn" checked> 🟢 Skating RN</label>
             <label><input type="radio" name="type" value="park"> 🔵 Park</label>
             <label><input type="radio" name="type" value="street"> 🔴 Street</label>
         </div>
-        <input type="text" class="title-input" placeholder="Title (e.g. 'Hubba Hideout')" />
         <input type="text" class="desc-input" placeholder="Description (e.g. 'Ledges are waxed')" />
         <div class="actions">
             <button class="save-btn">Save</button>
-            <button class="cancel-btn">Cancel</button>
         </div>
     `;
 
     const saveBtn = div.querySelector('.save-btn');
-    const cancelBtn = div.querySelector('.cancel-btn');
     const titleInput = div.querySelector('.title-input');
     const descInput = div.querySelector('.desc-input');
     const radios = div.querySelectorAll('input[name="type"]');
 
-    // Auto-fill title based on type (if empty or matches previous type label)
-    let lastAutoTitle = PIN_TYPES['skate_rn'].label;
-    titleInput.value = lastAutoTitle;
+    // Auto-fill title based on type (unless user manually edits)
+    let userModified = false;
+    titleInput.value = PIN_TYPES['skate_rn'].label;
+
+    titleInput.addEventListener('input', () => {
+        // If user clears the input, allow auto-fill again
+        userModified = titleInput.value.trim() !== '';
+    });
 
     radios.forEach(radio => {
         radio.addEventListener('change', (e) => {
-            const newType = e.target.value;
-            const newLabel = PIN_TYPES[newType].label;
-
-            // Only update if user hasn't typed a custom title (or if it matches the old auto-title)
-            if (titleInput.value === lastAutoTitle || titleInput.value === '') {
-                titleInput.value = newLabel;
-                lastAutoTitle = newLabel;
+            if (!userModified) {
+                const newType = e.target.value;
+                titleInput.value = PIN_TYPES[newType].label;
             }
         });
     });
@@ -125,10 +123,6 @@ function createFormContent(onSubmit) {
         const title = titleInput.value;
         const desc = descInput.value;
         onSubmit(type, title, desc);
-    });
-
-    cancelBtn.addEventListener('click', () => {
-        onSubmit(null, null, null); // Signal cancel
     });
 
     return div;
@@ -160,6 +154,7 @@ map.on('click', (e) => {
 
     // Create temp marker
     const tempMarker = L.marker([lat, lng], { icon: getIcon('street') }).addTo(map);
+    let isSaved = false; // Track if the pin was saved
 
     const form = createFormContent(async (type, title, desc) => {
         if (!type) {
@@ -187,6 +182,9 @@ map.on('click', (e) => {
             savedPin = data;
         }
 
+        // Mark as saved so popupclose doesn't remove it
+        isSaved = true;
+
         // Update Marker
         tempMarker.setIcon(getIcon(type));
         savedPin.marker = tempMarker;
@@ -194,6 +192,13 @@ map.on('click', (e) => {
     });
 
     tempMarker.bindPopup(form).openPopup();
+
+    // Remove marker if popup is closed without saving
+    tempMarker.on('popupclose', () => {
+        if (!isSaved) {
+            map.removeLayer(tempMarker);
+        }
+    });
 });
 
 // Initial Load

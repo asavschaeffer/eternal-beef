@@ -24,5 +24,8 @@ on public.pins for insert
 to anon, authenticated
 with check (true);
 
--- Optional: Create a policy to allow users to delete ONLY their own pins (requires Auth)
--- For now, we'll leave deletion restricted to admins or implement it later
+-- Allow anyone to delete pins (Warning: Open deletion)
+create policy "Enable delete access for all users"
+on public.pins for delete
+to anon, authenticated
+using (true);
