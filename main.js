@@ -30,6 +30,87 @@ L.control.zoom({
     position: 'bottomright'
 }).addTo(map);
 
+// Pin Types & Colors
+const PIN_TYPES = {
+    skate_rn: { label: 'Skating Here RN', color: '#00ff00', hue: 100 }, // Greenish
+    park: { label: 'Skate Park', color: '#0000ff', hue: 240 }, // Blue
+    street: { label: 'Street Spot', color: '#ff0000', hue: 0 } // Red
+};
+
+// Helper: Get Icon with Color
+function getIcon(type) {
+    const hue = PIN_TYPES[type]?.hue || 0;
+    return L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41],
+        className: `hue-rotate-${hue}` // We'll add this class logic in CSS or inline style
+    });
+}
+
+// Helper: Create Popup Content (Display)
+function createPopupContent(pin) {
+    const typeLabel = PIN_TYPES[pin.type]?.label || 'Skate Spot';
+    const div = document.createElement('div');
+    div.className = 'pin-popup';
+    div.innerHTML = `
+        <h3>${typeLabel}</h3>
+        <p>${pin.description || ''}</p>
+        <button class="delete-btn" data-id="${pin.id}">Delete Pin</button>
+    `;
+
+    // Attach Delete Listener
+    div.querySelector('.delete-btn').addEventListener('click', async () => {
+        if (confirm('Delete this pin?')) {
+            if (supabase) {
+                const { error } = await supabase.from('pins').delete().eq('id', pin.id);
+                if (error) console.error('Error deleting:', error);
+            }
+            map.removeLayer(pin.marker);
+        }
+    });
+
+    return div;
+}
+
+// Helper: Create Form Content (Edit)
+function createFormContent(onSubmit) {
+    const div = document.createElement('div');
+    div.className = 'pin-form-popup';
+    div.innerHTML = `
+        <h3>New Spot</h3>
+        <div class="form-group">
+            <label><input type="radio" name="type" value="skate_rn" checked> 🟢 Skating RN</label>
+            <label><input type="radio" name="type" value="park"> 🔵 Park</label>
+            <label><input type="radio" name="type" value="street"> 🔴 Street</label>
+        </div>
+        <input type="text" class="desc-input" placeholder="Description (e.g. 'Ledges are waxed')" />
+        <div class="actions">
+            <button class="save-btn">Save</button>
+            <button class="cancel-btn">Cancel</button>
+        </div>
+    `;
+
+    const saveBtn = div.querySelector('.save-btn');
+    const cancelBtn = div.querySelector('.cancel-btn');
+    const descInput = div.querySelector('.desc-input');
+
+    saveBtn.addEventListener('click', () => {
+        const type = div.querySelector('input[name="type"]:checked').value;
+        const desc = descInput.value;
+        onSubmit(type, desc);
+    });
+
+    cancelBtn.addEventListener('click', () => {
+        onSubmit(null, null); // Signal cancel
+    });
+
+    return div;
+}
+
 async function loadPins() {
     if (!supabase) return;
 
@@ -43,36 +124,53 @@ async function loadPins() {
     }
 
     data.forEach(pin => {
-        L.marker([pin.lat, pin.lng])
-            .addTo(map)
-            .bindPopup(`<b>${pin.type.toUpperCase()}</b><br>${pin.description}`);
+        const marker = L.marker([pin.lat, pin.lng], { icon: getIcon(pin.type) }).addTo(map);
+        pin.marker = marker; // Link marker to data
+        marker.bindPopup(createPopupContent(pin));
     });
 }
 
-// Map Click Handler - Direct Drop
-map.on('click', async (e) => {
+// Map Click Handler - Open Form
+map.on('click', (e) => {
     const lat = e.latlng.lat;
     const lng = e.latlng.lng;
 
-    // Add marker immediately
-    const marker = L.marker([lat, lng]).addTo(map);
-    marker.bindPopup("<b>SKATE SPOT</b><br>New spot dropped!").openPopup();
+    // Create temp marker
+    const tempMarker = L.marker([lat, lng], { icon: getIcon('street') }).addTo(map);
 
-    if (supabase) {
-        const { error } = await supabase
-            .from('pins')
-            .insert([
-                { lat: lat, lng: lng, type: 'skate', description: 'Skate Spot' }
-            ]);
-
-        if (error) {
-            console.error('Error saving pin:', error);
-            // Optionally remove marker if save fails
-            // map.removeLayer(marker);
+    const form = createFormContent(async (type, desc) => {
+        if (!type) {
+            // Cancelled
+            map.removeLayer(tempMarker);
+            return;
         }
-    } else {
-        console.log('Mock Save:', { lat, lng });
-    }
+
+        // Save
+        let savedPin = { lat, lng, type, description: desc };
+
+        if (supabase) {
+            const { data, error } = await supabase
+                .from('pins')
+                .insert([savedPin])
+                .select()
+                .single();
+
+            if (error) {
+                console.error('Error saving pin:', error);
+                alert('Failed to save pin.');
+                map.removeLayer(tempMarker);
+                return;
+            }
+            savedPin = data;
+        }
+
+        // Update Marker
+        tempMarker.setIcon(getIcon(type));
+        savedPin.marker = tempMarker;
+        tempMarker.bindPopup(createPopupContent(savedPin)).openPopup();
+    });
+
+    tempMarker.bindPopup(form).openPopup();
 });
 
 // Initial Load
